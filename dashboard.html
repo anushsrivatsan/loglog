@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Log Log — Dashboard</title>
+<link rel="icon" type="image/png" href="icon-512.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Litter Dash">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#E9EEEB; --surface:#FFFFFF; --ink:#1F2A27; --muted:#5D6B66; --line:#CFD8D4;
+  --accent:#1E6B5C; --accent-ink:#FFFFFF; --warn:#B9791A; --alert:#B3362E; --pic-bg:#E4DCCB;
+  --s1:#8A6A3B; --s2:#1E6B5C; --s3:#4E8A5C; --s4:#B9791A; --s5:#C9632A; --s6:#B3362E; --s7:#8E2430;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#151B19; --surface:#1E2623; --ink:#E6ECE9; --muted:#9AA8A2; --line:#33403B;
+  --accent:#4FB39C; --accent-ink:#0E1513; --pic-bg:#3A352C;
+}}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);
+  font:400 16px/1.5 "Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1080px;margin:0 auto;padding:20px 16px 56px}
+h1{font-size:1.8rem;line-height:1.1;margin:0}
+h2{font-size:1.15rem;margin:0 0 12px}
+.muted{color:var(--muted)}
+.hidden{display:none!important}
+a{color:var(--accent)}
+
+/* Login */
+.login{min-height:calc(100vh - 40px);display:grid;place-items:center}
+.login form{width:100%;max-width:360px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:28px 22px}
+label{display:block;font-weight:700;margin:14px 0 6px}
+input[type=email],input[type=password]{width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:12px;
+  padding:12px 18px;font-weight:700;cursor:pointer;background:var(--accent);color:var(--accent-ink);text-decoration:none}
+.btn.wide{width:100%;margin-top:20px}
+.btn.ghost{background:transparent;color:var(--muted);border:1.5px solid var(--line);padding:8px 14px}
+.btn:disabled{opacity:.55;cursor:wait}
+.error{color:var(--alert);margin:12px 0 0;min-height:1.5em}
+
+/* Header + controls */
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:18px}
+header p{margin:4px 0 0;font-size:.95rem}
+.head-actions{display:flex;gap:8px;flex-wrap:wrap}
+.controls{display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;margin-bottom:20px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.chip{border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 13px;cursor:pointer;white-space:nowrap}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+section{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px}
+
+/* Cat status */
+.cats{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.cat{border:1.5px solid var(--line);border-radius:14px;padding:14px;background:var(--bg)}
+.cat.alert{border-color:var(--alert)}
+.cat-top{display:flex;gap:12px;align-items:center}
+.cat h3{margin:0;font-size:1.15rem}
+.cat .last{font-size:.9rem;color:var(--muted)}
+.cat dl{display:grid;grid-template-columns:1fr auto;gap:2px 10px;margin:12px 0 0;font-size:.92rem}
+.cat dt{color:var(--muted)} .cat dd{margin:0;font-weight:700;text-align:right}
+.warn-line{margin-top:10px;font-size:.88rem;color:var(--alert);font-weight:700}
+
+.thumb{width:64px;height:44px;flex:none;border-radius:9px;border:3px solid var(--c,var(--line));background:var(--pic-bg);overflow:hidden}
+.thumb svg,.thumb img{width:100%;height:100%;display:block;object-fit:cover}
+
+/* Chart */
+.chart-box{position:relative;height:340px}
+
+/* Distribution grid */
+.scroll{overflow-x:auto}
+.dist{border-collapse:separate;border-spacing:4px;min-width:640px;width:100%}
+.dist th{font-weight:400;font-size:.8rem;color:var(--muted);vertical-align:bottom;text-align:center}
+.dist th .thumb{margin:0 auto 4px;width:72px;height:44px}
+.dist th:first-child,.dist td:first-child{text-align:left;font-weight:700;color:var(--ink);font-size:.95rem;white-space:nowrap}
+.dist td.cell{text-align:center;border-radius:8px;padding:10px 4px;font-weight:700;font-variant-numeric:tabular-nums}
+
+/* Table */
+.table-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+.table-head h2{margin:0}
+table.log{border-collapse:collapse;width:100%;min-width:760px;font-size:.92rem}
+table.log th{text-align:left;font-size:.82rem;color:var(--muted);font-weight:700;padding:8px 8px;border-bottom:1.5px solid var(--line)}
+table.log td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+table.log .thumb{width:56px;height:38px}
+.tag{display:inline-block;font-size:.78rem;padding:1px 7px;border-radius:6px;margin:2px 4px 2px 0;background:var(--bg);border:1px solid var(--line)}
+.tag.vet{background:var(--alert);color:#fff;border-color:var(--alert)}
+.tag.late{border-color:var(--warn);color:var(--warn)}
+.empty{padding:24px 0;color:var(--muted)}
+.more{margin-top:12px}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<main id="loginView" class="wrap login hidden">
+  <form id="loginForm" novalidate>
+    <h1>Log Log dashboard</h1>
+    <p class="muted" style="margin:4px 0 0">Sign in with your email.</p>
+    <label for="email">Email</label>
+    <input id="email" type="email" autocomplete="username" required>
+    <label for="password">Password</label>
+    <input id="password" type="password" autocomplete="current-password" required>
+    <button class="btn wide" id="loginBtn" type="submit">Sign in</button>
+    <p class="error" id="loginError" role="alert"></p>
+  </form>
+</main>
+
+<!-- ============ DASHBOARD ============ -->
+<main id="appView" class="wrap hidden">
+  <header>
+    <div>
+      <h1>Log Log dashboard</h1>
+      <p class="muted" id="whoami"></p>
+    </div>
+    <div class="head-actions">
+      <a class="btn" href="index.html">Log poop</a>
+      <button class="btn ghost" id="refreshBtn" type="button">Refresh</button>
+      <button class="btn ghost" id="signOutBtn" type="button">Sign out</button>
+    </div>
+  </header>
+
+  <div class="controls">
+    <div class="chips" id="rangeChips" role="group" aria-label="Time period"></div>
+    <div class="chips" id="catChips" role="group" aria-label="Cat"></div>
+  </div>
+
+  <section aria-labelledby="statusTitle">
+    <h2 id="statusTitle">How each Human is doing</h2>
+    <div class="cats" id="catCards"></div>
+  </section>
+
+  <section aria-labelledby="trendTitle">
+    <h2 id="trendTitle">Stool type over time</h2>
+    <p class="muted" style="margin:-6px 0 10px;font-size:.9rem">Higher on the chart is firmer. The green band is the healthy type.</p>
+    <div class="chart-box"><canvas id="trend" aria-label="Stool type over time for each cat" role="img"></canvas></div>
+  </section>
+
+  <section aria-labelledby="distTitle">
+    <h2 id="distTitle">How often each type appears</h2>
+    <div class="scroll"><table class="dist" id="dist"></table></div>
+  </section>
+
+  <section aria-labelledby="logTitle">
+    <div class="table-head">
+      <h2 id="logTitle">All entries</h2>
+      <button class="btn ghost" id="csvBtn" type="button">Download CSV</button>
+    </div>
+    <div class="scroll"><table class="log" id="logTable"></table></div>
+    <button class="btn ghost more hidden" id="moreBtn" type="button">Show more</button>
+  </section>
+</main>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="poo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9A6633"/><stop offset="1" stop-color="#5A381A"/></linearGradient>
+  <linearGradient id="pooWet" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#A9773F" stop-opacity=".85"/><stop offset="1" stop-color="#6B4520" stop-opacity=".9"/></linearGradient>
+</defs></svg>
+
+<script>
+/* ================= SETUP — same values as index.html ================= */
+const CONFIG = {
+  SUPABASE_URL: 'https://plbqkhpawzchkfjowjzd.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_0phs4xPn21cZB-BohmfioA_hbYCTI_K'
+};
+// Alert on a cat's card if nothing has been logged for this many hours
+const NO_LOG_ALERT_HOURS = 36;
+/* ===================================================================== */
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------------- STOOL PICTURES (optional) ----------------
+   Each type uses a built-in drawing. To use your own photo or image
+   instead, put the file next to index.html (e.g. in an "images" folder)
+   and write its path between the quotes, e.g. 1: 'images/type1.jpg'.
+   Leave it as '' to keep the drawing.
+   Keep these the same as in index.html.
+   ------------------------------------------------------------ */
+const STOOL_PICTURES = { 1:'', 2:'', 3:'', 4:'', 5:'', 6:'', 7:'' };
+
+const SH = '<ellipse cx="60" cy="63" rx="50" ry="5" fill="#000" opacity=".12"/>';
+const HL = (d) => `<path d="${d}" fill="none" stroke="#fff" stroke-opacity=".28" stroke-width="2.5" stroke-linecap="round"/>`;
+const SCORES = {
+  1: { name:'Hard pellets', desc:'Separate hard, dry lumps', c:'var(--s1)',
+       art: SH+'<g fill="url(#poo)"><circle cx="22" cy="52" r="9"/><circle cx="43" cy="49" r="8"/><circle cx="61" cy="55" r="7"/><circle cx="78" cy="48" r="9"/><circle cx="98" cy="54" r="8"/></g>'
+            +HL('M17 47q3-3 7-3')+HL('M73 43q3-3 7-3')+HL('M93 49q3-2 6-2') },
+  2: { name:'Firm, segmented log', desc:'Log shape with cracks, firm but not hard', c:'var(--s2)', ideal:true,
+       art: SH+'<g fill="url(#poo)"><ellipse cx="22" cy="48" rx="13" ry="11"/><ellipse cx="41" cy="46" rx="12" ry="12"/><ellipse cx="60" cy="47" rx="12" ry="11"/><ellipse cx="79" cy="45" rx="12" ry="12"/><ellipse cx="98" cy="48" rx="13" ry="11"/></g>'
+            +'<g stroke="#3E2610" stroke-width="2" stroke-linecap="round" opacity=".55"><path d="M31 38l-2 8M50 37l1 9M69 37l-1 8M88 37l2 8"/></g>'+HL('M16 41q10-6 22-4') },
+  3: { name:'Smooth, moist log', desc:'Holds its shape, leaves a little residue', c:'var(--s3)',
+       art: SH+'<path fill="url(#poo)" d="M12 50C12 38 30 35 60 37S108 39 108 50 92 62 60 60 12 62 12 50Z"/>'+HL('M22 42q30-6 64-2') },
+  4: { name:'Soft log, loses shape', desc:'Very moist, flattens or breaks when picked up', c:'var(--s4)',
+       art: SH+'<path fill="url(#poo)" d="M6 59C10 48 26 45 42 47S62 42 76 45 106 46 114 59C102 65 18 65 6 59Z"/>'+HL('M20 52q20-6 40-4') },
+  5: { name:'Soft piles', desc:'Soft mounds with some shape', c:'var(--s5)',
+       art: SH+'<g fill="url(#poo)"><path d="M10 61C10 42 48 40 50 61Z"/><path d="M48 62C49 49 76 48 78 62Z"/><path d="M76 61C78 41 112 43 112 61Z"/></g>'+HL('M18 52q8-6 18-5')+HL('M85 51q8-5 17-4') },
+  6: { name:'Mushy, no shape', desc:'Fluffy, ragged pieces, some texture', c:'var(--s6)',
+       art: SH+'<path fill="url(#poo)" d="M8 60C11 51 19 55 25 47S38 50 46 44 58 48 66 42 80 48 88 44 101 52 111 56C113 63 14 65 8 60Z"/>'
+            +'<g fill="url(#poo)"><circle cx="16" cy="44" r="3"/><circle cx="104" cy="45" r="3.5"/><circle cx="56" cy="36" r="2.5"/></g>' },
+  7: { name:'Watery', desc:'Liquid, no solid pieces', c:'var(--s7)',
+       art: '<path fill="url(#pooWet)" d="M5 60C9 52 29 55 43 51S69 54 85 50 115 54 115 60C111 67 11 68 5 60Z"/>'
+            +'<g fill="url(#pooWet)"><ellipse cx="20" cy="45" rx="3" ry="2"/><ellipse cx="100" cy="44" rx="3.5" ry="2"/><ellipse cx="60" cy="40" rx="2" ry="1.5"/></g>'+HL('M30 57q15-3 30-2') }
+};
+function stoolPic(n){
+  const src = STOOL_PICTURES[n];
+  return src ? `<img src="${esc(src)}" alt="" loading="lazy">`
+             : `<svg viewBox="4 30 112 40" aria-hidden="true">${SCORES[n].art}</svg>`;
+}
+const COLOURS = [
+  { v: 'Brown',            hex: '#6B4426' },
+  { v: 'Dark / black',     hex: '#1A1A1A', concern: true },
+  { v: 'Red-tinged',       hex: '#9E2B25', concern: true },
+  { v: 'Yellow / orange',  hex: '#C98A1E' },
+  { v: 'Green',            hex: '#5E7A2E' },
+  { v: 'Pale / grey',      hex: '#B9B6AE', concern: true }
+];
+const FLAGS = [
+  { v: 'Blood',              concern: true },
+  { v: 'Mucus' },
+  { v: 'Worms / foreign bits', concern: true },
+  { v: 'Straining' },
+  { v: 'Outside litter box' },
+  { v: 'Very strong smell' }
+];
+
+
+const sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+const $ = id => document.getElementById(id);
+const RANGES = [ {d:7,t:'7 days'}, {d:30,t:'30 days'}, {d:90,t:'90 days'}, {d:0,t:'All time'} ];
+const CAT_COLOURS = ['#1E6B5C','#B9791A','#5B5FC7','#B3362E','#3F8FB5','#8E5BA8','#6B8E23','#C2185B'];
+let rows = [], range = 30, catFilter = 'All', chart = null, tableLimit = 100;
+
+/* ---------- helpers ---------- */
+const H = 3600e3;
+function fmtTime(iso){ return new Date(iso).toLocaleString('en-IN',{day:'numeric',month:'short',year:'2-digit',hour:'numeric',minute:'2-digit'}); }
+function ago(iso){
+  const h = (Date.now()-new Date(iso))/H;
+  if (h < 1) return Math.max(1,Math.round(h*60))+' min ago';
+  if (h < 48) return Math.round(h)+' hrs ago';
+  return Math.round(h/24)+' days ago';
+}
+function needsVet(score, colour, flags){
+  const reasons=[];
+  if (score>=6) reasons.push('very loose stool');
+  if (score===1) reasons.push('hard, dry stool');
+  if (COLOURS.find(c=>c.v===colour)?.concern) reasons.push(String(colour).toLowerCase()+' colour');
+  (flags||[]).forEach(f=>{ if (FLAGS.find(x=>x.v===f)?.concern) reasons.push(f.toLowerCase()); });
+  return reasons;
+}
+const lateHours = r => (new Date(r.created_at) - new Date(r.logged_at)) / H;
+const cats = () => [...new Set(rows.map(r=>r.cat))].sort((a,b)=>a.localeCompare(b));
+const catColour = name => CAT_COLOURS[cats().indexOf(name) % CAT_COLOURS.length];
+const view = () => catFilter==='All' ? rows : rows.filter(r=>r.cat===catFilter);
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+/* ---------- auth ---------- */
+async function showView(session){
+  const user = session?.user || null;
+  $('loginView').classList.toggle('hidden', !!user);
+  $('appView').classList.toggle('hidden', !user);
+  if (user){ $('whoami').textContent = 'Signed in as ' + user.email; load(); }
+}
+$('loginForm').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const email=$('email').value.trim(), password=$('password').value;
+  if (!email || !password){ $('loginError').textContent='Enter your email and password.'; return; }
+  $('loginBtn').disabled=true; $('loginError').textContent='';
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  $('loginBtn').disabled=false;
+  if (error) $('loginError').textContent = error.message.includes('Invalid') ? 'Email or password is wrong. Check with the admin if you need an account.' : error.message;
+});
+$('signOutBtn').addEventListener('click', ()=>sb.auth.signOut());
+$('refreshBtn').addEventListener('click', ()=>load());
+sb.auth.onAuthStateChange((_e, s)=>showView(s));
+sb.auth.getSession().then(({data})=>showView(data.session));
+
+/* ---------- data ---------- */
+async function load(){
+  $('refreshBtn').disabled = true;
+  let q = sb.from('poop_logs').select('*').order('logged_at',{ascending:false}).limit(5000);
+  if (range) q = q.gte('logged_at', new Date(Date.now()-range*24*H).toISOString());
+  const { data, error } = await q;
+  $('refreshBtn').disabled = false;
+  if (error){ $('catCards').innerHTML = `<p class="error">Could not load entries: ${esc(error.message)}</p>`; return; }
+  rows = data; tableLimit = 100;
+  if (catFilter!=='All' && !cats().includes(catFilter)) catFilter='All';
+  render();
+}
+
+/* ---------- render ---------- */
+function render(){
+  $('rangeChips').innerHTML = RANGES.map(r=>`<button class="chip" type="button" data-range="${r.d}" aria-pressed="${r.d===range}">${r.t}</button>`).join('');
+  $('catChips').innerHTML = ['All',...cats()].map(c=>`<button class="chip" type="button" data-cat="${esc(c)}" aria-pressed="${c===catFilter}">${esc(c)}</button>`).join('');
+  renderCards(); renderChart(); renderDist(); renderTable();
+}
+$('rangeChips').addEventListener('click', e=>{ const b=e.target.closest('.chip'); if(!b) return; range=Number(b.dataset.range); load(); });
+$('catChips').addEventListener('click', e=>{ const b=e.target.closest('.chip'); if(!b) return; catFilter=b.dataset.cat; tableLimit=100; render(); });
+
+function renderCards(){
+  const list = catFilter==='All' ? cats() : [catFilter];
+  if (!list.length){ $('catCards').innerHTML = `<p class="empty">No entries in this period. Staff can add them from the Log poop page.</p>`; return; }
+  const days = range || Math.max(1, Math.ceil((Date.now()-new Date(rows[rows.length-1].logged_at))/(24*H)));
+  $('catCards').innerHTML = list.map(name=>{
+    const r = rows.filter(x=>x.cat===name);           // newest first
+    const last = r[0];
+    const firm = r.filter(x=>x.score>=2 && x.score<=3).length;
+    const loose = r.filter(x=>x.score>=5).length;
+    const hard = r.filter(x=>x.score===1).length;
+    const vet = r.filter(x=>needsVet(x.score,x.colour,x.flags).length).length;
+    const hrs = (Date.now()-new Date(last.logged_at))/H;
+    const stale = hrs > NO_LOG_ALERT_HOURS;
+    const s = SCORES[last.score];
+    return `<article class="cat ${stale||vet?'alert':''}">
+      <div class="cat-top">
+        <div class="thumb" style="--c:${s.c}" role="img" aria-label="Latest: ${esc(s.name)}">${stoolPic(last.score)}</div>
+        <div><h3>${esc(name)}</h3><div class="last">Latest: ${esc(s.name)}, ${ago(last.logged_at)}</div></div>
+      </div>
+      <dl>
+        <dt>Entries</dt><dd>${r.length} <span class="muted" style="font-weight:400">(${(r.length/days).toFixed(1)}/day)</span></dd>
+        <dt>Firm (types 2–3)</dt><dd>${Math.round(firm/r.length*100)}%</dd>
+        <dt>Loose (types 5–7)</dt><dd>${loose}</dd>
+        <dt>Hard pellets</dt><dd>${hard}</dd>
+        <dt>Flagged to vet</dt><dd style="${vet?'color:var(--alert)':''}">${vet}</dd>
+      </dl>
+      ${stale?`<div class="warn-line">No entry for ${Math.round(hrs)} hrs. Check the litter box.</div>`:''}
+    </article>`;
+  }).join('');
+}
+
+const healthyBand = {
+  id:'healthyBand',
+  beforeDatasetsDraw(c){
+    const {ctx, chartArea:a, scales:{y}} = c; if(!a) return;
+    const t=y.getPixelForValue(1.5), b=y.getPixelForValue(2.5);
+    ctx.save(); ctx.fillStyle='rgba(30,107,92,.13)';
+    ctx.fillRect(a.left, Math.min(t,b), a.right-a.left, Math.abs(b-t)); ctx.restore();
+  }
+};
+function renderChart(){
+  const list = catFilter==='All' ? cats() : [catFilter];
+  const ink = cssVar('--muted'), grid = cssVar('--line');
+  const datasets = list.map(name=>({
+    label:name, borderColor:catColour(name), backgroundColor:catColour(name),
+    showLine:true, tension:.25, pointRadius:4, pointHoverRadius:6, borderWidth:2,
+    data: rows.filter(r=>r.cat===name).map(r=>({x:+new Date(r.logged_at), y:r.score, r})).reverse()
+  }));
+  if (chart) chart.destroy();
+  chart = new Chart($('trend'), {
+    type:'scatter', data:{datasets}, plugins:[healthyBand],
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:false,
+      scales:{
+        y:{ reverse:true, min:.5, max:7.5, grid:{color:grid},
+            afterBuildTicks: ax => { ax.ticks = [1,2,3,4,5,6,7].map(v=>({value:v})); },
+            ticks:{ stepSize:1, color:ink, callback:v=>SCORES[v] ? v+' '+SCORES[v].name : '' } },
+        x:{ grid:{color:grid}, ticks:{ color:ink, maxTicksLimit:8,
+            callback:v=>new Date(v).toLocaleDateString('en-IN',{day:'numeric',month:'short'}) } }
+      },
+      plugins:{
+        legend:{ labels:{ color:ink, usePointStyle:true } },
+        tooltip:{ callbacks:{ label:ctx=>{ const r=ctx.raw.r; return `${r.cat}: ${SCORES[r.score].name}, ${fmtTime(r.logged_at)}`; } } }
+      }
+    }
+  });
+}
+
+function renderDist(){
+  const list = catFilter==='All' ? cats() : [catFilter];
+  if (!list.length){ $('dist').innerHTML=''; return; }
+  const types=[1,2,3,4,5,6,7];
+  let html = '<tr><th scope="col">Cat</th>' + types.map(n=>`<th scope="col"><div class="thumb" style="--c:${SCORES[n].c}">${stoolPic(n)}</div>${esc(SCORES[n].name)}</th>`).join('') + '</tr>';
+  html += list.map(name=>{
+    const r = rows.filter(x=>x.cat===name);
+    return `<tr><td>${esc(name)}</td>` + types.map(n=>{
+      const k = r.filter(x=>x.score===n).length, pct = r.length ? k/r.length : 0;
+      const mix = Math.round(pct*70);
+      return `<td class="cell" style="background:color-mix(in srgb, ${SCORES[n].c} ${mix}%, var(--bg));color:${mix>40?'#fff':'var(--ink)'}" title="${k} of ${r.length}">${k ? Math.round(pct*100)+'%' : '–'}</td>`;
+    }).join('') + '</tr>';
+  }).join('');
+  $('dist').innerHTML = html;
+}
+
+function renderTable(){
+  const v = view();
+  if (!v.length){ $('logTable').innerHTML = '<tr><td class="empty">No entries in this period.</td></tr>'; $('moreBtn').classList.add('hidden'); return; }
+  $('logTable').innerHTML = `<thead><tr><th>Type</th><th>Cat</th><th>Seen</th><th>Colour and signs</th><th>Notes</th><th>Logged by</th></tr></thead><tbody>` +
+    v.slice(0, tableLimit).map(r=>{
+      const s = SCORES[r.score], vet = needsVet(r.score,r.colour,r.flags), late = lateHours(r);
+      return `<tr>
+        <td><div class="thumb" style="--c:${s.c}" title="${esc(s.name)}">${stoolPic(r.score)}</div><div style="font-size:.82rem">${esc(s.name)}</div></td>
+        <td><strong>${esc(r.cat)}</strong></td>
+        <td style="white-space:nowrap">${fmtTime(r.logged_at)}${late>=2?`<br><span class="tag late" title="Saved ${fmtTime(r.created_at)}">logged ${Math.round(late)} hrs later</span>`:''}</td>
+        <td>${r.colour?`<span class="tag">${esc(r.colour)}</span>`:''}${(r.flags||[]).map(f=>`<span class="tag">${esc(f)}</span>`).join('')}${vet.length?'<span class="tag vet">Flag to vet</span>':''}</td>
+        <td>${esc(r.notes)}</td>
+        <td class="muted">${esc((r.logged_by_email||'').split('@')[0])}</td>
+      </tr>`;
+    }).join('') + '</tbody>';
+  $('moreBtn').classList.toggle('hidden', v.length <= tableLimit);
+}
+$('moreBtn').addEventListener('click', ()=>{ tableLimit += 100; renderTable(); });
+
+$('csvBtn').addEventListener('click', ()=>{
+  const v = view(); if (!v.length) return;
+  const cols = ['cat','type','type_name','seen_at','saved_at','colour','signs','flag_to_vet','notes','logged_by'];
+  const q = x => `"${String(x ?? '').replace(/"/g,'""')}"`;
+  const lines = [cols.join(',')].concat(v.map(r=>[
+    r.cat, r.score, SCORES[r.score].name, fmtTime(r.logged_at), fmtTime(r.created_at), r.colour,
+    (r.flags||[]).join('; '), needsVet(r.score,r.colour,r.flags).join('; '), r.notes, r.logged_by_email
+  ].map(q).join(',')));
+  const blob = new Blob(['\ufeff'+lines.join('\n')], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `litter-log-${catFilter==='All'?'all-cats':catFilter}-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(a.href);
+});
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{ if (rows.length) renderChart(); });
+</script>
+</body>
+</html>
