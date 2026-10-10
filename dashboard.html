@@ -308,7 +308,7 @@ $('catChips').addEventListener('click', e=>{ const b=e.target.closest('.chip'); 
 
 function renderCards(){
   const list = catFilter==='All' ? cats() : [catFilter];
-  if (!list.length){ $('catCards').innerHTML = `<p class="empty">No entries in this period. Staff can add them from the Log poop page.</p>`; return; }
+  if (!list.length){ $('catCards').innerHTML = `<p class="empty">No entries in this period. You (or your partner) can add them from the Log poop page.</p>`; return; }
   const days = range || Math.max(1, Math.ceil((Date.now()-new Date(rows[rows.length-1].logged_at))/(24*H)));
   $('catCards').innerHTML = list.map(name=>{
     const r = rows.filter(x=>x.cat===name);           // newest first
