@@ -404,7 +404,7 @@ async function loadEntries(){
         <div class="meta">${fmtTime(r.logged_at)}${r.logged_by_email?' by '+esc(r.logged_by_email.split('@')[0]):''}</div>
         ${r.colour?`<span class="tag">${esc(r.colour)}</span>`:''}
         ${(r.flags||[]).map(f=>`<span class="tag">${esc(f)}</span>`).join('')}
-        ${reasons.length?'<span class="tag vet">Flag to vet</span>':''}
+        ${reasons.length?'<span class="tag vet">Flag to Gastro</span>':''}
         ${r.notes?`<div class="meta" style="margin-top:4px">${esc(r.notes)}</div>`:''}
       </div>
       ${mine?`<button class="del" type="button" data-id="${r.id}" aria-label="Delete this entry">Delete</button>`:'<span></span>'}
